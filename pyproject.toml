@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "meetings-exporter"
+version = "0.1.0"
+description = "Export Webex meeting data (recordings, transcripts, summaries) to pluggable backends (Google Drive, etc.)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Cisco Sample Code License v1.1" }
+authors = [{ name = "Webex Developer Relations", email = "devrel@webex.com" }]
+dependencies = [
+    "requests>=2.28",
+    "google-api-python-client>=2.100",
+    "google-auth-oauthlib>=1.1",
+    "google-auth-httplib2>=0.1.1",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+]
+
+[project.scripts]
+meetings-exporter = "meetings_exporter.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

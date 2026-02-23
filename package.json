@@ -1,5 +1,5 @@
 {
-  "name": "webex-samples-github-template",
+  "name": "meetings-exporter",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,5 +13,9 @@
     "lint-staged": "^15.2.2",
     "markdownlint": "^0.27.0",
     "prettier": "^3.2.5"
+  },
+  "lint-staged": {
+    "*.{js,json,md,yml,yaml}": "prettier --write",
+    "*.py": "ruff check --fix"
   }
 }

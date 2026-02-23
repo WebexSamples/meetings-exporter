@@ -1,2 +1,22 @@
 node_modules/
 .ruff_cache/
+
+# Python
+.env
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# App secrets / tokens
+token.json
+*.credentials.json
+
+# Test / coverage
+.coverage
+htmlcov/
+.pytest_cache/
