@@ -5,7 +5,7 @@ Export Webex meeting data (recordings, transcripts, summaries, and action items)
 ## Quick Start
 
 ```bash
-git clone https://github.com/webex/meetings-exporter.git
+git clone https://github.com/WebexSamples/meetings-exporter.git
 cd meetings-exporter
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
@@ -49,7 +49,7 @@ Meetings must be **individual instances** (not series) to get summaries, recordi
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/webex/meetings-exporter.git
+git clone https://github.com/WebexSamples/meetings-exporter.git
 cd meetings-exporter
 ```
 
