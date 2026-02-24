@@ -12,7 +12,7 @@ Thanks for your interest in contributing. This document covers how to set up the
 1. Clone the repository and create a virtual environment:
 
 ```bash
-git clone https://github.com/webex/meetings-exporter.git
+git clone https://github.com/WebexSamples/meetings-exporter.git
 cd meetings-exporter
 python3 -m venv .venv
 source .venv/bin/activate   # On Windows: .venv\Scripts\activate
