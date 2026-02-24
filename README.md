@@ -85,15 +85,42 @@ Get a token from [Webex for Developers](https://developer.webex.com/docs/getting
 
 To export to Google Drive instead of (or in addition to) local folder:
 
-- Create a project in [Google Cloud Console](https://console.cloud.google.com), enable the Drive API, and create OAuth 2.0 credentials (Desktop app).
-- Download the JSON key and set in `.env`:
+**Step 1: Create OAuth credentials in Google Cloud Console**
+
+1. Go to [APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials)
+2. Click **Create Credentials** → **Create OAuth client ID**
+3. If prompted to configure the consent screen first, go to [OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent) and complete it before continuing:
+   - **User type:** **External** (or **Internal** if using Google Workspace)
+   - **App information:** App name (e.g. "meetings-exporter"), User support email, Developer contact email. App logo is optional—skip for personal use
+   - **Scopes:** Skip—the app requests `drive.file` at runtime
+   - **Test users:** Add your Google account email—required for apps in Testing mode; only listed users can sign in
+   - Return to Credentials and click **Create Credentials** → **Create OAuth client ID** again
+4. **1 Credential Type:** Select **Google Drive API**, then **User data** → **Next**
+5. **2 OAuth Consent Screen** and **3 Scopes:** Click through (or configure if first time—see above)
+6. **4 OAuth Client ID:** Application type **Desktop app**, Name (e.g. "meetings-exporter") → **Create**
+7. **5 Your Credentials:** Click **Download JSON** and save the file (e.g. `credentials.json`) somewhere safe—do not commit it to git
+
+**Step 2: Configure `.env`**
 
 ```bash
 EXPORT_BACKEND=google_drive
 GOOGLE_CREDENTIALS_FILE=/path/to/your/credentials.json
 ```
 
-On first run, the app will open a browser to complete OAuth and save a token.
+Optional: set `GOOGLE_DRIVE_FOLDER_ID` to a Drive folder ID if you want exports under a specific folder (otherwise they go to Drive root).
+
+**Step 3: First run**
+
+On first export, the app opens a browser for you to sign in and authorize access. A `token.json` file is saved locally so you won't need to re-authorize unless you revoke access or the token expires.
+
+**"Access blocked" or "has not completed the Google verification process"**
+
+Your app is in Testing mode, so only approved test users can sign in. Add your Google account:
+
+1. Go to [OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent)
+2. Click **Test users** → **Add users**
+3. Add your email (e.g. `yourname@gmail.com`) and save
+4. Retry the export
 
 ## Usage
 
@@ -132,6 +159,15 @@ meetings-exporter export --from 2026-02-01 --to 2026-02-28
 ```
 
 With `EXPORT_BACKEND=google_drive` and credentials configured, meetings are uploaded to Drive in the same structure.
+
+**Quick test:** List a meeting, then export it to Drive:
+
+```bash
+meetings-exporter list --from 2026-02-01 --to 2026-02-28 --max 1
+meetings-exporter export MEETING_ID_FROM_ABOVE
+```
+
+The first export opens a browser for OAuth; subsequent exports use the saved token. The command prints the Drive folder URL when done.
 
 ## Export Backends
 
