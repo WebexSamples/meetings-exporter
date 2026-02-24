@@ -26,15 +26,15 @@ Both commands use `WebexClient` and `export_meeting()` from the ingestion layer.
 
 All Webex calls go through `WebexClient`. Base URL: `https://webexapis.com/v1`.
 
-| Method | Webex API Endpoint | Purpose |
-|--------|--------------------|---------|
-| `list_meetings()` | `GET /meetings` | List meetings with `meetingType=meeting` (instances only) |
-| `get_meeting()` | `GET /meetings/{id}` | Get a single meeting |
-| `list_meeting_participants()` | `GET /meetingParticipants?meetingId=...` | List participants |
-| `list_recordings()` | `GET /recordings?meetingId=...` | List recordings |
-| `list_meeting_transcripts()` | `GET /meetingTranscripts?meetingId=...` | List transcripts |
-| `get_meeting_summary_by_meeting_id()` | `GET /meetingSummaries?meetingId=...` | Get AI summary and action items |
-| `download_transcript_from_item()` | `GET {txtDownloadLink}` | Download transcript (URL from transcript item) |
+| Method                                | Webex API Endpoint                       | Purpose                                                   |
+| ------------------------------------- | ---------------------------------------- | --------------------------------------------------------- |
+| `list_meetings()`                     | `GET /meetings`                          | List meetings with `meetingType=meeting` (instances only) |
+| `get_meeting()`                       | `GET /meetings/{id}`                     | Get a single meeting                                      |
+| `list_meeting_participants()`         | `GET /meetingParticipants?meetingId=...` | List participants                                         |
+| `list_recordings()`                   | `GET /recordings?meetingId=...`          | List recordings                                           |
+| `list_meeting_transcripts()`          | `GET /meetingTranscripts?meetingId=...`  | List transcripts                                          |
+| `get_meeting_summary_by_meeting_id()` | `GET /meetingSummaries?meetingId=...`    | Get AI summary and action items                           |
+| `download_transcript_from_item()`     | `GET {txtDownloadLink}`                  | Download transcript (URL from transcript item)            |
 
 **Important details:**
 
@@ -56,11 +56,11 @@ All Webex calls go through `WebexClient`. Base URL: `https://webexapis.com/v1`.
 
 ## 4. Data Model: `models.py`
 
-| Model | Role |
-|-------|------|
-| `MeetingData` | Normalized meeting data (title, times, recordings, transcript, summary, action items, participants) |
-| `RecordingAsset` | Recording file (filename, content, download_url, mime_type) |
-| `ActionItem` | Action item (text, assignee, due, raw) |
+| Model            | Role                                                                                                |
+| ---------------- | --------------------------------------------------------------------------------------------------- |
+| `MeetingData`    | Normalized meeting data (title, times, recordings, transcript, summary, action items, participants) |
+| `RecordingAsset` | Recording file (filename, content, download_url, mime_type)                                         |
+| `ActionItem`     | Action item (text, assignee, due, raw)                                                              |
 
 ## 5. Formatting: `meeting_formatter.py`
 
@@ -73,12 +73,12 @@ Shared formatting used by exporters:
 
 ## 6. Exporters: `exporters/`
 
-| File | Class | Role |
-|------|-------|------|
-| `base.py` | `MeetingExporter` | ABC with `write(MeetingData) -> str` |
+| File              | Class                 | Role                                                                                        |
+| ----------------- | --------------------- | ------------------------------------------------------------------------------------------- |
+| `base.py`         | `MeetingExporter`     | ABC with `write(MeetingData) -> str`                                                        |
 | `local_folder.py` | `LocalFolderExporter` | Writes to disk (meeting_details.txt, transcript.vtt, summary.txt, summary.json, recordings) |
-| `google_drive.py` | `GoogleDriveExporter` | Uploads same structure to Google Drive |
-| `factory.py` | `get_exporter()` | Chooses exporter from `EXPORT_BACKEND` env var |
+| `google_drive.py` | `GoogleDriveExporter` | Uploads same structure to Google Drive                                                      |
+| `factory.py`      | `get_exporter()`      | Chooses exporter from `EXPORT_BACKEND` env var                                              |
 
 ## 7. Webhook Utilities: `webhook_utils.py`
 
@@ -89,13 +89,13 @@ Helpers for future webhook support:
 
 ## Webex API → Output Mapping
 
-| Webex API Data | Output File / Content |
-|----------------|------------------------|
-| `GET /meetings/{id}` | `meeting_details.txt` (title, date, host, participants) |
-| `GET /meetingParticipants` | Participant list in `meeting_details.txt` |
-| `GET /recordings` + `downloadUrl` | `recording_*.mp4` (or `.webm`, `.m4a`) |
-| `GET /meetingTranscripts` → `txtDownloadLink` | `transcript.vtt` or `transcript.txt` |
-| `GET /meetingSummaries` | `summary.txt`, `summary.json`, action items in `summary.txt` |
+| Webex API Data                                | Output File / Content                                        |
+| --------------------------------------------- | ------------------------------------------------------------ |
+| `GET /meetings/{id}`                          | `meeting_details.txt` (title, date, host, participants)      |
+| `GET /meetingParticipants`                    | Participant list in `meeting_details.txt`                    |
+| `GET /recordings` + `downloadUrl`             | `recording_*.mp4` (or `.webm`, `.m4a`)                       |
+| `GET /meetingTranscripts` → `txtDownloadLink` | `transcript.vtt` or `transcript.txt`                         |
+| `GET /meetingSummaries`                       | `summary.txt`, `summary.json`, action items in `summary.txt` |
 
 ## File Layout (Per Meeting)
 
