@@ -56,9 +56,7 @@ class LocalFolderExporter(MeetingExporter):
         # Summary and action items
         summary_content = summary_txt_content(meeting_data)
         if summary_content:
-            (meeting_dir / "summary.txt").write_text(
-                summary_content, encoding="utf-8"
-            )
+            (meeting_dir / "summary.txt").write_text(summary_content, encoding="utf-8")
 
         if meeting_data.summary_structured:
             (meeting_dir / "summary.json").write_text(

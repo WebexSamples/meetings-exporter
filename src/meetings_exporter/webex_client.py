@@ -6,6 +6,8 @@ https://developer.webex.com/meeting/docs/api/v1/meeting-summaries/get-summary-by
 
 from __future__ import annotations
 
+from urllib.parse import urljoin
+
 import requests
 
 WEBEX_BASE = "https://webexapis.com/v1"
@@ -47,7 +49,30 @@ class WebexClient:
         return r.json() if r.content else {}
 
     def _get_binary(self, url: str) -> bytes:
-        r = self._session.get(url, timeout=60)
+        """Download binary. Follow redirects with auth (requests strips it on cross-host)."""
+        headers = {
+            "Authorization": self._session.headers["Authorization"],
+            "Accept": "*/*",
+        }
+        r = requests.get(url, headers=headers, timeout=120, allow_redirects=False)
+        while r.status_code in (301, 302, 303, 307, 308):
+            location = r.headers.get("Location")
+            if not location:
+                break
+            base = url.rstrip("/") + "/"
+            url = location if location.startswith("http") else urljoin(base, location)
+            r = requests.get(url, headers=headers, timeout=120, allow_redirects=False)
+        r.raise_for_status()
+        return r.content
+
+    def _get_binary_no_auth(self, url: str) -> bytes:
+        """Download binary from pre-signed URL (e.g. Webex recording CDN).
+
+        Do NOT send Authorization header: pre-signed URLs are valid without it.
+        Sending Bearer token causes the CDN to return an HTML login page instead of the file.
+        Ref: WebexSamples/WebexRecordingsDownloader uses plain requests.get(link).
+        """
+        r = requests.get(url, headers={"Accept": "*/*"}, timeout=120, allow_redirects=True)
         r.raise_for_status()
         return r.content
 
@@ -88,6 +113,16 @@ class WebexClient:
             params["meetingId"] = meeting_id
         data = self._get("recordings", params=params)
         return data.get("items", [])
+
+    def get_recording_details(self, recording_id: str, host_email: str) -> dict:
+        """Get recording details including direct download URL.
+
+        The list endpoint returns a site URL for manual download; this endpoint
+        returns the actual downloadUrl for direct binary download.
+        Ref: https://developer.webex.com/meeting/docs/api/v1/recordings/get-recording-details
+        """
+        params = {"hostEmail": host_email}
+        return self._get(f"recordings/{recording_id}", params=params)
 
     def get_meeting_summary_by_meeting_id(self, meeting_id: str) -> dict:
         """Get summary for a meeting using the Meeting Summaries API (get summary by meeting ID).

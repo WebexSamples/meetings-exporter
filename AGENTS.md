@@ -20,12 +20,14 @@ Python CLI that exports Webex meeting data (recordings, transcripts, summaries, 
 
 ## Architecture
 
-- **CLI** (`cli.py`): `list` and `export` subcommands. Entry point.
-- **Ingestion** (`ingestion.py`): `collect_meeting_data()` fetches from Webex; `export_meeting()` orchestrates collect + write. Callable from CLI or future webhook handler.
+- **CLI** (`cli.py`): `list`, `export`, and `webhook` subcommands. Entry point.
+- **Ingestion** (`ingestion.py`): `collect_meeting_data()` fetches from Webex; `export_meeting()` orchestrates collect + write. Callable from CLI or webhook handler.
 - **WebexClient** (`webex_client.py`): HTTP client for Webex APIs.
 - **Exporters** (`exporters/`): Pluggable backends. `MeetingExporter` ABC in `base.py`. Implementations: `LocalFolderExporter`, `GoogleDriveExporter`. Factory uses registry in `factory.py`.
 - **meeting_formatter** (`meeting_formatter.py`): Shared formatting for folder names, meeting details, and summary text. Used by exporters (SRP).
-- **webhook_utils** (`webhook_utils.py`): Parsing for Webex webhook payloads. For Phase 2 webhook server.
+- **webhook_utils** (`webhook_utils.py`): Parsing and signature verification for Webex webhook payloads.
+- **webhook_server** (`webhook_server.py`): HTTP server for Webex meeting notifications (meetings.ended, recordings.created, meetingTranscripts.created). Triggers `export_meeting()` in background.
+- **webhook_client** (`webhook_client.py`): Webex webhook registration (create, list, delete). Use with ngrok for local testing.
 
 ## Dev Environment
 
@@ -64,4 +66,4 @@ pytest tests/ -v --cov=meetings_exporter --cov-report=term-missing
 
 ## Roadmap
 
-Webhooks (e.g. auto-export on recording ready) are planned. `webhook_utils` and `export_meeting()` are ready for Phase 2.
+Webhook support is implemented. Use `meetings-exporter webhook` to run the server and `webhook register --url <ngrok-url>` to register with Webex. See README for ngrok local testing.

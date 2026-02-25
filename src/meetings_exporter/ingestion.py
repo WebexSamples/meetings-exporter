@@ -6,6 +6,7 @@ https://developer.webex.com/meeting/docs/api/v1/meeting-summaries/get-summary-by
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from collections.abc import Callable
@@ -15,6 +16,8 @@ from meetings_exporter.exporters.base import MeetingExporter
 from meetings_exporter.exporters.factory import get_exporter
 from meetings_exporter.models import ActionItem, MeetingData, RecordingAsset
 from meetings_exporter.webex_client import WebexClient
+
+logger = logging.getLogger(__name__)
 
 
 def _default_progress(msg: str) -> None:
@@ -49,6 +52,23 @@ def _action_items_from_summary_response(summary_payload: dict) -> list[ActionIte
     return items
 
 
+# Webex may return format as "MP4" (codec) instead of "video/mp4" (MIME type)
+_FORMAT_TO_MIME: dict[str, str] = {
+    "mp4": "video/mp4",
+    "webm": "video/webm",
+    "m4a": "audio/mp4",
+    "mp3": "audio/mpeg",
+}
+
+
+def _normalize_mime_type(format_val: str | None) -> str:
+    """Convert Webex format (e.g. MP4) to valid MIME type for Drive/APIs."""
+    if not format_val:
+        return "video/mp4"
+    key = format_val.lower().strip()
+    return _FORMAT_TO_MIME.get(key, "video/mp4")
+
+
 def _fetch_recordings(
     client: WebexClient,
     instance_id: str,
@@ -62,14 +82,35 @@ def _fetch_recordings(
     except Exception:
         recs = []
     for i, r in enumerate(recs):
-        url = r.get("downloadUrl") or r.get("playbackUrl")
+        rec_id = r.get("id")
+        host_email = r.get("hostEmail")
+        url = None
         content = None
-        if url and r.get("downloadUrl"):
+        if rec_id and host_email:
             try:
-                progress(f"  Downloading recording {i + 1}/{len(recs)}...")
-                content = client._get_binary(url)
-            except Exception:
-                pass
+                progress(f"  Getting download URL for recording {i + 1}/{len(recs)}...")
+                details = client.get_recording_details(rec_id, host_email)
+                # Use temporaryDirectDownloadLinks.recordingDownloadLink (CDN URL).
+                # Do NOT use downloadUrl - it points to lsr.php (web page), not the binary.
+                tddl = details.get("temporaryDirectDownloadLinks") or {}
+                url = tddl.get("recordingDownloadLink")
+                if url:
+                    progress(f"  Downloading recording {i + 1}/{len(recs)}...")
+                    # Pre-signed URLs: no Authorization (CDN returns HTML otherwise)
+                    content = client._get_binary_no_auth(url)
+            except Exception as e:
+                logger.warning(
+                    "Recording download failed for %s: %s",
+                    rec_id or "unknown",
+                    e,
+                )
+        else:
+            url = r.get("downloadUrl") or r.get("playbackUrl")
+            if not host_email:
+                logger.warning(
+                    "Recording %s missing hostEmail, cannot get direct download URL",
+                    rec_id or "unknown",
+                )
         filename = r.get("topic") or r.get("title") or f"recording_{len(recordings)}.mp4"
         if not filename.endswith((".mp4", ".webm", ".m4a")):
             filename = f"{filename}.mp4"
@@ -78,7 +119,7 @@ def _fetch_recordings(
                 filename=filename,
                 content=content,
                 download_url=url,
-                mime_type=r.get("format", "video/mp4") or "video/mp4",
+                mime_type=_normalize_mime_type(r.get("format")),
             )
         )
     return recordings
@@ -177,9 +218,7 @@ def collect_meeting_data(
 
     recordings = _fetch_recordings(client, instance_id, progress)
     transcript_text, transcript_vtt = _fetch_transcript(client, instance_id, progress)
-    summary_text, summary_structured, action_items = _fetch_summary(
-        client, instance_id, progress
-    )
+    summary_text, summary_structured, action_items = _fetch_summary(client, instance_id, progress)
 
     progress("  Fetch complete.")
     return MeetingData(
