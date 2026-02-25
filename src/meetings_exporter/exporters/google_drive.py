@@ -48,9 +48,7 @@ class GoogleDriveExporter(MeetingExporter):
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    self.credentials_path, SCOPES
-                )
+                flow = InstalledAppFlow.from_client_secrets_file(self.credentials_path, SCOPES)
                 creds = flow.run_local_server(port=0)
             with open(self.token_path, "w") as f:
                 f.write(creds.to_json())
@@ -68,11 +66,7 @@ class GoogleDriveExporter(MeetingExporter):
         }
         if parents:
             folder_metadata["parents"] = parents
-        folder = (
-            service.files()
-            .create(body=folder_metadata, fields="id, name")
-            .execute()
-        )
+        folder = service.files().create(body=folder_metadata, fields="id, name").execute()
         folder_id = folder["id"]
 
         # Meeting details (title, date, time, participants, etc.)

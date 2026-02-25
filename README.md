@@ -23,6 +23,7 @@ meetings-exporter export MEETING_ID --output-dir ./exports
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [Export Backends](#export-backends)
+- [Webhook Server](#webhook-server)
 - [Architecture](#architecture)
 - [Project Structure](#project-structure)
 - [Testing](#testing)
@@ -176,6 +177,44 @@ The first export opens a browser for OAuth; subsequent exports use the saved tok
 
 OneDrive and Dropbox can be added later; the app is built so new backends plug in without changing ingestion logic.
 
+## Webhook Server
+
+The webhook server receives Webex notifications when meetings end, recordings are ready, or transcripts are created, and automatically exports meeting data to your configured backend.
+
+**Prerequisites:** [ngrok](https://ngrok.com) for local testing (e.g. `brew install ngrok`).
+
+**Steps:**
+
+1. Start the webhook server:
+
+```bash
+meetings-exporter webhook --port 8080
+```
+
+2. In another terminal, start ngrok to expose your local server:
+
+```bash
+ngrok http 8080
+```
+
+3. Copy the HTTPS URL from ngrok (e.g. `https://abc123.ngrok-free.app`).
+
+4. Register webhooks with Webex:
+
+```bash
+meetings-exporter webhook register --url https://abc123.ngrok-free.app
+```
+
+5. Run a Webex meeting, end it (with recording/transcript if desired), and observe webhook delivery and export in the server logs.
+
+6. To remove webhooks when done:
+
+```bash
+meetings-exporter webhook unregister
+```
+
+**Environment variables:** `WEBEX_ACCESS_TOKEN` (required). Optional: `WEBEX_WEBHOOK_SECRET` for signature verification.
+
 ## Architecture
 
 ```mermaid
@@ -257,7 +296,7 @@ The repo uses [Husky](https://github.com/typicode/husky) and [lint-staged](https
 
 ## Roadmap
 
-Webhooks (e.g. auto-export when a recording is ready) are planned for a future release. The codebase is structured to support this: `export_meeting()` can be called programmatically, and `webhook_utils` provides payload parsing for Webex events.
+Webhook support is implemented. Use the [Webhook Server](#webhook-server) section above for auto-export when meetings end, recordings are ready, or transcripts are created.
 
 ## License
 

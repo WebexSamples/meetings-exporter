@@ -26,9 +26,7 @@ def _create_local(**kwargs: Any) -> MeetingExporter:
 
 
 def _create_google_drive(**kwargs: Any) -> MeetingExporter:
-    creds_path = (
-        kwargs.get("credentials_path") or os.environ.get("GOOGLE_CREDENTIALS_FILE", "")
-    )
+    creds_path = kwargs.get("credentials_path") or os.environ.get("GOOGLE_CREDENTIALS_FILE", "")
     token_path = kwargs.get("token_path") or os.environ.get("GOOGLE_TOKEN_FILE", "token.json")
     return GoogleDriveExporter(
         credentials_path=os.path.expanduser(creds_path) if creds_path else "",
@@ -47,7 +45,6 @@ def get_exporter(backend: str | None = None, **kwargs: Any) -> MeetingExporter:
     backend = backend or os.environ.get("EXPORT_BACKEND", "google_drive")
     if backend not in _EXPORTER_REGISTRY:
         raise ValueError(
-            f"Unknown export backend: {backend}. "
-            f"Available: {', '.join(sorted(_EXPORTER_REGISTRY))}"
+            f"Unknown export backend: {backend}. Available: {', '.join(sorted(_EXPORTER_REGISTRY))}"
         )
     return _EXPORTER_REGISTRY[backend](**kwargs)

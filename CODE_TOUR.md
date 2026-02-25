@@ -40,7 +40,7 @@ All Webex calls go through `WebexClient`. Base URL: `https://webexapis.com/v1`.
 
 - **Instance IDs** – Summaries, recordings, and transcripts require instance IDs (e.g. `..._I_...`), not series IDs. `list_meetings()` uses `meetingType=meeting` to return instances.
 - **Meeting Summaries API** – Uses `GET /meetingSummaries?meetingId=...` (not the Summary Report API). See [Get Summary by Meeting ID](https://developer.webex.com/meeting/docs/api/v1/meeting-summaries/get-summary-by-meeting-id).
-- **Recordings** – Uses `downloadUrl` from the recordings response for binary download.
+- **Recordings** – Uses `temporaryDirectDownloadLinks.recordingDownloadLink` from get-recording-details (not `downloadUrl`, which points to a web page).
 
 ## 3. Ingestion: `ingestion.py`
 
@@ -48,7 +48,7 @@ All Webex calls go through `WebexClient`. Base URL: `https://webexapis.com/v1`.
 
 1. **Meeting details** – `get_meeting()` → title, start/end, host, etc.
 2. **Participants** – `list_meeting_participants()`
-3. **Recordings** – `list_recordings()` → `downloadUrl` → `_get_binary()`
+3. **Recordings** – `list_recordings()` → `get_recording_details()` → `recordingDownloadLink` → `_get_binary_no_auth()`
 4. **Transcript** – `list_meeting_transcripts()` → `txtDownloadLink` → download
 5. **Summary & action items** – `get_meeting_summary_by_meeting_id()` → parses `summary`, `actionItems` (or `action_items`)
 
@@ -93,7 +93,7 @@ Helpers for future webhook support:
 | --------------------------------------------- | ------------------------------------------------------------ |
 | `GET /meetings/{id}`                          | `meeting_details.txt` (title, date, host, participants)      |
 | `GET /meetingParticipants`                    | Participant list in `meeting_details.txt`                    |
-| `GET /recordings` + `downloadUrl`             | `recording_*.mp4` (or `.webm`, `.m4a`)                       |
+| `GET /recordings` + `recordingDownloadLink`   | `recording_*.mp4` (or `.webm`, `.m4a`)                       |
 | `GET /meetingTranscripts` → `txtDownloadLink` | `transcript.vtt` or `transcript.txt`                         |
 | `GET /meetingSummaries`                       | `summary.txt`, `summary.json`, action items in `summary.txt` |
 

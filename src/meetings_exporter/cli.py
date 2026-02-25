@@ -12,6 +12,12 @@ from meetings_exporter.exporters.factory import get_exporter
 from meetings_exporter.exporters.local_folder import LocalFolderExporter
 from meetings_exporter.ingestion import export_meeting
 from meetings_exporter.webex_client import WebexClient
+from meetings_exporter.webhook_client import (
+    create_meeting_webhooks,
+    delete_webhook,
+    list_webhooks,
+)
+from meetings_exporter.webhook_server import run_webhook_server
 
 
 def main() -> None:
@@ -71,6 +77,28 @@ def main() -> None:
         help="Write all meeting assets to this directory instead of the configured cloud backend",
     )
 
+    # webhook: run server or register/unregister webhooks
+    webhook_parser = subparsers.add_parser(
+        "webhook",
+        help="Webhook server and registration for meeting notifications",
+    )
+    webhook_parser.add_argument("--host", default="0.0.0.0", help="Host to bind (default 0.0.0.0)")
+    webhook_parser.add_argument("--port", type=int, default=8080, help="Port (default 8080)")
+    webhook_sub = webhook_parser.add_subparsers(dest="webhook_cmd", help="Webhook commands")
+    webhook_sub.add_parser("serve", help="Start webhook HTTP server (default)")
+    webhook_parser.set_defaults(webhook_cmd="serve")
+    webhook_register = webhook_sub.add_parser("register", help="Register webhooks with Webex")
+    webhook_register.add_argument(
+        "--url",
+        required=True,
+        metavar="URL",
+        help="Public URL for webhooks (e.g. https://abc.ngrok-free.app)",
+    )
+    webhook_sub.add_parser(
+        "unregister",
+        help="Remove meetings-exporter webhooks from Webex",
+    )
+
     args = parser.parse_args()
 
     if args.command == "list":
@@ -105,9 +133,7 @@ def main() -> None:
             sys.exit(1)
         client = WebexClient(access_token=token)
         exporter = (
-            LocalFolderExporter(root_path=args.output_dir)
-            if args.output_dir
-            else get_exporter()
+            LocalFolderExporter(root_path=args.output_dir) if args.output_dir else get_exporter()
         )
         out_dir = args.output_dir or "(configured backend)"
 
@@ -140,6 +166,33 @@ def main() -> None:
                     print(f"  Exported: {result}")
                 except Exception as e:
                     print(f"  Error: {e}", file=sys.stderr)
+        return
+
+    if args.command == "webhook":
+        if args.webhook_cmd == "serve":
+            run_webhook_server(host=args.host, port=args.port)
+        elif args.webhook_cmd == "register":
+            token = os.environ.get("WEBEX_ACCESS_TOKEN")
+            if not token:
+                print("Error: WEBEX_ACCESS_TOKEN not set", file=sys.stderr)
+                sys.exit(1)
+            secret = os.environ.get("WEBEX_WEBHOOK_SECRET", "").strip() or None
+            created = create_meeting_webhooks(args.url, token, secret)
+            print(f"Registered {len(created)} webhook(s) at {args.url}/webhook")
+        elif args.webhook_cmd == "unregister":
+            token = os.environ.get("WEBEX_ACCESS_TOKEN")
+            if not token:
+                print("Error: WEBEX_ACCESS_TOKEN not set", file=sys.stderr)
+                sys.exit(1)
+            webhooks = list_webhooks(token)
+            ours = [w for w in webhooks if (w.get("name") or "").startswith("meetings-exporter")]
+            for w in ours:
+                delete_webhook(w["id"], token)
+                print(f"Deleted webhook: {w.get('name', w['id'])}")
+            if not ours:
+                print("No meetings-exporter webhooks found.")
+        else:
+            webhook_parser.print_help()
         return
 
     parser.print_help()

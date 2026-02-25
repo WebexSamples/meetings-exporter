@@ -4,9 +4,27 @@ from unittest.mock import MagicMock
 
 from meetings_exporter.ingestion import (
     _action_items_from_summary_response,
+    _normalize_mime_type,
     collect_meeting_data,
 )
 from meetings_exporter.models import MeetingData
+
+
+class TestNormalizeMimeType:
+    """Test _normalize_mime_type maps Webex format to valid MIME types."""
+
+    def test_mp4_uppercase_maps_to_video_mp4(self) -> None:
+        assert _normalize_mime_type("MP4") == "video/mp4"
+
+    def test_webm_maps_to_video_webm(self) -> None:
+        assert _normalize_mime_type("webm") == "video/webm"
+
+    def test_empty_or_none_defaults_to_video_mp4(self) -> None:
+        assert _normalize_mime_type(None) == "video/mp4"
+        assert _normalize_mime_type("") == "video/mp4"
+
+    def test_unknown_format_defaults_to_video_mp4(self) -> None:
+        assert _normalize_mime_type("unknown") == "video/mp4"
 
 
 class TestActionItemsFromSummaryResponse:
@@ -83,3 +101,39 @@ class TestCollectMeetingData:
         result = collect_meeting_data(mock_client, "meet-456")
 
         assert result.title == "Meeting meet-456"
+
+    def test_recordings_use_recording_download_link_not_download_url(self) -> None:
+        """Recordings use recordingDownloadLink, not downloadUrl (which is a web page)."""
+        mock_client = MagicMock()
+        mock_client.get_meeting.return_value = {
+            "id": "meet-789",
+            "title": "Recording Test",
+            "start": "2025-02-20T14:00:00Z",
+        }
+        mock_client.list_recordings.return_value = [
+            {
+                "id": "rec-1",
+                "hostEmail": "host@test.com",
+                "topic": "Test Recording",
+                "format": "MP4",
+            },
+        ]
+        mock_client.get_recording_details.return_value = {
+            "downloadUrl": "https://site.webex.com/lsr.php?RCID=xxx",  # web page - must NOT be used
+            "temporaryDirectDownloadLinks": {
+                "recordingDownloadLink": "https://cdn.webex.com/nbr/recording.mp4",
+            },
+        }
+        mock_client._get_binary_no_auth.return_value = b"\x00\x00\x00\x20ftypiso6"  # MP4 header
+        mock_client.list_meeting_transcripts.return_value = []
+        mock_client.get_meeting_summary_by_meeting_id.return_value = {}
+
+        result = collect_meeting_data(mock_client, "meet-789")
+
+        assert len(result.recordings) == 1
+        assert result.recordings[0].content == b"\x00\x00\x00\x20ftypiso6"
+        assert result.recordings[0].filename == "Test Recording.mp4"
+        mock_client.get_recording_details.assert_called_once_with("rec-1", "host@test.com")
+        mock_client._get_binary_no_auth.assert_called_once_with(
+            "https://cdn.webex.com/nbr/recording.mp4"
+        )
